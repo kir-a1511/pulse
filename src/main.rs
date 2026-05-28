@@ -28,21 +28,14 @@ fn main() {
 fn run() -> Result<(), Box<dyn Error>> {
 
     let args = Args::parse();
-    let urls = get_urls(&args.urls)?;
     let config = Config {
         slow_threshold_ms: 500,
         timeout_ms: args.timeout,
     };
-    spawn_checker(urls, args.interval, config);
-
-    Ok(())
-}
-
-// Create new Thread that check
-fn spawn_checker(urls: Vec<String>, interval: u64, config: Config) {
     let stat: Arc<Mutex<Stats>> = Arc::new(Mutex::new(Stats::new(0, 0, 0)));
     loop {
         let (tx, rx) = mpsc::channel();
+        let urls = get_urls(&args.urls)?;
         for url in urls.clone() {
             let tx = tx.clone();
             let stat_clone = Arc::clone(&stat);
@@ -69,8 +62,10 @@ fn spawn_checker(urls: Vec<String>, interval: u64, config: Config) {
         }
         let stat_clone = stat.lock().unwrap();
         println!("{}", stat_clone);
-        thread::sleep(Duration::from_secs(interval));
+        thread::sleep(Duration::from_secs(args.interval));
     }
+
+    Ok(())
 }
 
 fn get_urls(file_path: &str) -> Result<Vec<String>, String> {
