@@ -1,4 +1,4 @@
-use std::time::Instant;
+use chrono::Local;
 
 #[derive(Debug)]
 pub struct SiteStatus {
@@ -8,25 +8,29 @@ pub struct SiteStatus {
     pub checked_at: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum CheckResult {
     Ok,
     Slow(u64), // Time in  ms
     Down(String) // Reason
 }
 
+#[derive(Clone, Copy)]
 pub struct Config {
     pub slow_threshold_ms: u64,
     pub timeout_ms: u64,
 }
-struct Stats {
-    total_checks: u64,
-    failures: u64,
-    avg_response: f64,
+
+
+#[derive(Debug)]
+pub struct Stats {
+    pub total_checks: u64,
+    pub failures: u64,
+    pub avg_response: u64,
 }
 
 impl Stats {
-    fn new(total_checks: u64, failures: u64, avg_response: f64) -> Stats {
+    pub fn new(total_checks: u64, failures: u64, avg_response: u64) -> Stats {
         Stats {
             total_checks,
             failures,
@@ -41,7 +45,25 @@ impl SiteStatus {
             url,
             response_time,
             status,
-            checked_at: String::from(format!("{:?}", Instant::now())),
+            checked_at: Local::now().time().format("%H:%M:%S").to_string(),
         }
+    }
+}
+
+impl std::fmt::Display for SiteStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let result = match self.status{
+            CheckResult::Ok => format!("✅  {} {}", self.url, self.response_time.unwrap()),
+            CheckResult::Slow(time) => format!("⚠️  {} {} (slow)", self.url, time),
+            CheckResult::Down(_) => format!("❌  {} timeout (drop at {})", self.url, self.checked_at),
+        };
+
+        write!(f, "{}", result)
+    }
+}
+
+impl std::fmt::Display for Stats {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Total checks: {}\nFailures: {}\nAvg response time: {}", self.total_checks, self.failures, self.avg_response)
     }
 }
